@@ -1,6 +1,6 @@
 ---
-id: doc4
-title: Other Document
+id: jvm1
+title: JVM1
 ---
 
 this is another document

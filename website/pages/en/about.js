@@ -21,18 +21,16 @@ function Help(props) {
 
   const supportLinks = [
     {
-      content: `Learn more using the [documentation on this site.](${docUrl(
-        'doc1.html',
-      )})`,
-      title: 'Browse Docs',
+      content: "还没毕业",
+      title: '学业',
     },
     {
-      content: 'Ask questions about the documentation and project',
-      title: 'Join the community',
+      content: '爱出门，也爱宅家，爱Switch，爱Netflix',
+      title: '爱好',
     },
     {
-      content: "Find out what's new with this project",
-      title: 'Stay up to date',
+      content: "见习程序员一枚",
+      title: '等级',
     },
   ];
 
@@ -40,11 +38,20 @@ function Help(props) {
     <div className="docMainWrapper wrapper">
       <Container className="mainContainer documentContainer postContainer">
         <div className="post">
-          <header className="postHeader">
-            <h1>Need help?</h1>
+        <header className="postHeader">
+            <h1>About Website</h1>
           </header>
-          <p>This project is maintained by a dedicated group of people.</p>
+          <p>Because I am currently doing an internship and preparing for the autumn recruit, 
+            there is no time to maintain the blog, 
+            so the blog part currently uses the previous content.</p>
+          <header className="postHeader">
+            <h1>About Me</h1>
+          </header>
+          <p>注重养生，目前没有脱发烦恼，节假日喜欢出去玩，宅在家里当然更好，
+            喜欢Switch，手残游戏党，但是依然不亦乐乎.</p>
+          <a href="mailto:dsyhappy1234@gmail.com?subject=Peter's知识基地&body=Hi Peter:">联系我</a>
           <GridBlock contents={supportLinks} layout="threeColumn" />
+          
         </div>
       </Container>
     </div>

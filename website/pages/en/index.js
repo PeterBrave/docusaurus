@@ -64,9 +64,8 @@ class HomeSplash extends React.Component {
         <div className="inner">
           <ProjectTitle tagline={siteConfig.tagline} title={siteConfig.title} />
           <PromoSection>
-            <Button href="#try">Try It Out</Button>
-            <Button href={docUrl('doc1.html')}>Example Link</Button>
-            <Button href={docUrl('doc2.html')}>Example Link 2</Button>
+            <Button href={docUrl('os1.html')}>文档</Button>
+            <Button href={docUrl('leetcode1.html')}>Leetcode</Button>
           </PromoSection>
         </div>
       </SplashContainer>
@@ -97,7 +96,7 @@ class Index extends React.Component {
         className="productShowcaseSection paddingBottom"
         style={{textAlign: 'center'}}>
         <h2>Feature Callout</h2>
-        <MarkdownBlock>These are features of this project</MarkdownBlock>
+        <MarkdownBlock>在Blog里记录生活</MarkdownBlock>
       </div>
     );
 
@@ -106,12 +105,10 @@ class Index extends React.Component {
         {[
           {
             content:
-              'To make your landing page more attractive, use illustrations! Check out ' +
-              '[**unDraw**](https://undraw.co/) which provides you with customizable illustrations which are free to use. ' +
-              'The illustrations you see on this page are from unDraw.',
+              '教是最好的学，分享知识帮助学的更快，同时能让知识学习更深入更牢固',
             image: `${baseUrl}img/undraw_code_review.svg`,
             imageAlign: 'left',
-            title: 'Wonderful SVG Illustrations',
+            title: '知识分享',
           },
         ]}
       </Block>
@@ -122,10 +119,11 @@ class Index extends React.Component {
         {[
           {
             content:
-              'This is another description of how this project is useful',
+              '几年后 再回首 发现生活不是空空荡荡' + 
+              '看见自己的少年模样 可以会心一笑',
             image: `${baseUrl}img/undraw_note_list.svg`,
             imageAlign: 'right',
-            title: 'Description',
+            title: '生活记录',
           },
         ]}
       </Block>
@@ -136,10 +134,10 @@ class Index extends React.Component {
         {[
           {
             content:
-              'Each new Docusaurus project has **randomly-generated** theme colors.',
+              '将积累的知识进行管理沉淀，最大化发挥知识的效能，为工作和学习赋能',
             image: `${baseUrl}img/undraw_youtube_tutorial.svg`,
             imageAlign: 'right',
-            title: 'Randomly Generated Theme Colors',
+            title: '知识管理',
           },
         ]}
       </Block>
@@ -149,13 +147,13 @@ class Index extends React.Component {
       <Block layout="fourColumn">
         {[
           {
-            content: 'This is the content of my feature',
+            content: '记录计算机相关文档',
             image: `${baseUrl}img/undraw_react.svg`,
             imageAlign: 'top',
             title: 'Feature One',
           },
           {
-            content: 'The content of my second feature',
+            content: '记录曾经写过的Leetcode题目',
             image: `${baseUrl}img/undraw_operating_system.svg`,
             imageAlign: 'top',
             title: 'Feature Two',
@@ -181,12 +179,12 @@ class Index extends React.Component {
 
       return (
         <div className="productShowcaseSection paddingBottom">
-          <h2>Who is Using This?</h2>
-          <p>This project is used by all these people</p>
+          <h2>Who am I?</h2>
+          <p>崇尚养生的程序员</p>
           <div className="logos">{showcase}</div>
           <div className="more-users">
-            <a className="button" href={pageUrl('users.html')}>
-              More {siteConfig.title} Users
+            <a className="button" href={pageUrl('about.html')}>
+              About Peter
             </a>
           </div>
         </div>

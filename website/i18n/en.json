@@ -3,39 +3,58 @@
   "localized-strings": {
     "next": "Next",
     "previous": "Previous",
-    "tagline": "A website for testing",
+    "tagline": "Peter's Knowledge Base",
     "docs": {
-      "doc1": {
-        "title": "Latin-ish",
-        "sidebar_label": "Example Page"
+      "rdt1": {
+        "title": "Git手册"
       },
-      "doc2": {
-        "title": "document number 2"
+      "os1": {
+        "title": "IO多路复用专题"
       },
-      "doc3": {
-        "title": "This is document number 3"
+      "juc1": {
+        "title": "JUC1"
       },
-      "doc4": {
-        "title": "Other Document"
+      "jvm1": {
+        "title": "JVM1"
       },
-      "doc5": {
-        "title": "Fifth Document"
+      "leetcode1": {
+        "title": "leetcode1"
       },
-      "test": {
-        "title": "Getting Started"
+      "leetcode2": {
+        "title": "leetcode2"
+      },
+      "mysql1": {
+        "title": "MySQL1"
+      },
+      "redis1": {
+        "title": "Redis必知必会"
+      },
+      "swo1": {
+        "title": "剑指offer1"
+      },
+      "os2": {
+        "title": "操作系统2"
+      },
+      "net1": {
+        "title": "计算机网络1"
       }
     },
     "links": {
-      "Docs": "Docs",
-      "API": "API",
-      "Help": "Help",
+      "文档": "文档",
+      "Leetcode": "Leetcode",
+      "About": "About",
       "Blog": "Blog"
     },
     "categories": {
-      "Docusaurus": "Docusaurus",
-      "First Category": "First Category",
-      "Second Category": "Second Category",
-      "Third Category": "Third Category"
+      "操作系统": "操作系统",
+      "计算机网络": "计算机网络",
+      "JUC": "JUC",
+      "JVM": "JVM",
+      "MySQL": "MySQL",
+      "Redis": "Redis",
+      "研发工具": "研发工具",
+      "Leetcode": "Leetcode",
+      "剑指Offer": "剑指Offer"
     }
   },
   "pages-strings": {

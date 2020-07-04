@@ -1,11 +1,35 @@
 {
   "docs": {
-    "Docusaurus": ["doc1"],
-    "First Category": ["doc2"],
-    "Second Category": ["doc3"],
-    "Third Category": ["test"]
+    "操作系统": [
+      "os1",
+      "os2"
+    ],
+    "计算机网络": [
+      "net1"
+    ],
+    "JUC": [
+      "juc1"
+    ],
+    "JVM": [
+      "jvm1"
+    ],
+    "MySQL": [
+      "mysql1"
+    ],
+    "Redis": [
+      "redis1"
+    ],
+    "研发工具": [
+      "rdt1"
+    ] 
   },
   "docs-other": {
-    "First Category": ["doc4", "doc5"]
+    "Leetcode": [
+      "leetcode1", 
+      "leetcode2"
+    ],
+    "剑指Offer": [
+      "swo1"
+    ]
   }
 }

@@ -105,7 +105,7 @@ class Index extends React.Component {
         {[
           {
             content:
-              '教是最好的学，分享知识帮助学的更快，同时能让知识学习更深入更牢固',
+              '教是最好的学，分享知识帮助学的更快，同时让知识学习更深入更牢固',
             image: `${baseUrl}img/undraw_code_review.svg`,
             imageAlign: 'left',
             title: '知识分享',

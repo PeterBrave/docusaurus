@@ -1,28 +1,318 @@
 ---
 id: os1
 title: IO多路复用专题
+custom_edit_url: https://github.com/PeterBrave/docusaurus/edit/master/docs/IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E4%B8%93%E9%A2%98.md
 ---
 
-Check the [documentation](https://docusaurus.io) for how to use Docusaurus.
+## 问题：如何设计一个高性能网络服务器？
 
-## Lorem
+**要求：**服务器可以同时和多个客户端进行连接，并处理多个客户端的请求。
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque elementum dignissim ultricies. Fusce rhoncus ipsum tempor eros aliquam consequat. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus elementum massa eget nulla aliquet sagittis. Proin odio tortor, vulputate ut odio in, ultrices ultricies augue. Cras ornare ultrices lorem malesuada iaculis. Etiam sit amet libero tempor, pulvinar mauris sed, sollicitudin sapien.
+一个简单的解决方案是为每一个客户端都创建一个线程，在读取之前阻塞该线程，直到发送请求并写入响应为止。这种处理的方式被称之为 `BIO` 即 `Blocking IO` 。
 
-## Mauris In Code
+### BIO有什么缺陷？
 
+在服务端开发中，当我们使用 `ServerSocket` 绑定完端口之后，就会开始监听并等待 `accept` 事件，`accept` 会阻塞当前主线程，当收到 `accept` 事件时，程序就会拿到一个客户端与当前服务端连接的 `socket`  。针对这个 `socket` 我们可以进行读写，但是这个 `socket` 读写方法都是会阻塞当前线程的。
+
+
+
+> **网络进程之间的通信：**
+>
+> 两个进程如果可以进行通信，最基本的前提是可以唯一标识一个进程，在本地进程通信中，可以使用 `PID` 来唯一标识一个进程，但是 `PID` 只在本地唯一，网络中的两个进程冲突的几率是很大的。
+>
+> `IP` 层的 `IP地址` 可以唯一标识一台主机，`TCP协议和端口号` 可以唯一标识主机的一个进程，这样可以利用 `IP地址+协议+端口号` 来唯一标识网络中的一个进程，可以唯一标识网络中的一个进程之后，他们就可以利用 `Socket` 进行通信。
+>
+> **什么是 `Socket` ？**
+>
+> `Socket` 是对 `TCP/IP协议` 的抽象，从而进行了一些基本的函数接口，如：`create, listen, connect, bind, accept, send, read, write` 等。
+>
+> `Socket` 起源于 `Unix操作系统`，而 `Unix` 遵从一切皆文件的哲学，`Socket` 是通过打开，读和写，关闭的这种模式来实现，服务器和客户端各自维护一个文件，在建立连接后，可以向自己的文件写入内容供对方读取，或者读取对方内容。在通信结束时会关闭文件。
+>
+> **`Socket` 详细通信流程？**
+>
+> **服务端：**
+>
+> - 服务器首先创建 `socket` ，并给 `socket` 绑定 `IP地址和端口号` 。
+>
+> - 服务器 `socket` 会监听端口号的请求。随时准备接受客户端发来的连接。这是时候服务器的 `socket` 只是 `listen` ，并没有打开。
+>
+> **客户端：**
+>
+> - 此时假设客户端创建了 `socket` 打开了 `socket` ，并根据服务器的 `IP地址和端口号` 尝试去连接服务器 `socket` 。
+>
+> - 服务器 `socket` 接收到客户端 `socket` 的连接请求，被动打开，开始接收客户端请求。这个时候服务器的 `socket` 进入阻塞状态（即 `accept方法` 需要一直等待客户端返回连接信息后才返回）。
+>
+> - 客户端在连接成功之后，向服务器发送连接状态信息，服务器端在接收到客户端连接状态信息之后，就会将 `accpet方法` 返回，并提示连接成功。
+>
+> - 此时客户端就可以给服务器写入相关信息，服务器也可以读出相关信息。
+>
+> - 最后在发送完数据之后，客户端会关闭socket，服务端也需要关闭socket。
+>
+> 以上就是整个socket通信流程。
+
+
+
+一般我们会使用多线程的方式来进行 `C/S` 交互，这样就很难做到 **C10K** 。一万个客户端就需要一万个线程去支持，CPU上下文切换需要处理一些操作句柄，这个过程是非常的繁琐，会把机器负载拉飞。
+
+> 什么是 `C10K问题` ？
+>
+> `C10K` 就是 `Client 10000` 问题，即「在同时连接到服务器的客户端数量超过 10000 个的环境中，即便硬件性能足够， 依然无法正常提供服务」，简而言之，就是单机1万个并发连接问题。这个概念最早由 Dan Kegel 提出并发布于其[个人站点](http://www.kegel.com/c10k.html) 。
+
+
+
+既然多线程是一个坏主意，那么将目光转向单线程。
+
+在 Linux 中，每一个网络连接都是一个 `fd` ，用单线程的方式去写一个网络服务器。伪代码如下：
+
+```c
+while (1) {
+  for (Fdx in [FdA~FdE]) {
+    if (Fdx 有数据) {
+      读Fdx;处理;
+    }
+  }
+}
 ```
-Mauris vestibulum ullamcorper nibh, ut semper purus pulvinar ut. Donec volutpat orci sit amet mauris malesuada, non pulvinar augue aliquam. Vestibulum ultricies at urna ut suscipit. Morbi iaculis, erat at imperdiet semper, ipsum nulla sodales erat, eget tincidunt justo dui quis justo. Pellentesque dictum bibendum diam at aliquet. Sed pulvinar, dolor quis finibus ornare, eros odio facilisis erat, eu rhoncus nunc dui sed ex. Nunc gravida dui massa, sed ornare arcu tincidunt sit amet. Maecenas efficitur sapien neque, a laoreet libero feugiat ut.
+
+判断有数据还是没有数据，是运行在用户态的程序判断的，效率比较低，因此不推荐使用。
+
+这种处理方式称之为 `NIO` 即 `NonBlocking IO` 非阻塞IO。
+
+>**什么是Linux文件描述符 `fd` ？**
+>
+>一个 Linux 进程可以打开成百上千个文件，为了表示和区分已经打开的文件，Linux 会给每个文件分配一个编号（一个 ID），这个编号就是一个整数，被称为文件描述符（File Descriptor）。
+>
+>`fd` 是(file descriptor)，这种一般是 `BSD Socket` 的用法，用在 Unix/Linux 系统上。在 Unix/Linux 系统下，一个 `socket句柄` ，可以看做是一个文件，在 `socket` 上收发数据，相当于对一个文件进行读写，所以一个 `socket句柄`，通常也用表示文件句柄的 `fd` 来表示。
+>
+>可以通过 `fd` 找到对应的文件。
+
+
+
+**问题：单个线程在处理 A 客户端请求时，那么 E 客户端发来的请求是否会丢失？**
+
+答案是不会，因为有 **DMA控制器** 的存在，当系统接收到一个请求，不需要通过CPU的参与，DMA控制器就可以直接将数据包传输到内存中指定的区域等待处理。
+
+> DMA控制器，即Direct Memory Access Controller
+>
+> 在文件读取的过程中，CPU并不直接操作硬盘，而是对DMA下达指令，让DMA来完成对文件的读取。
+>
+> 第一步：CPU向DMA下达指令，指令包含：磁盘设备信息以及要读取的文件位置。
+>
+> 第二步：DMA告知硬盘进行文件读取，文件读取的过程是将文件的内容加载到内存中。
+>
+> 第三步：在文件读取完毕之后，硬盘给DMA一个反馈，DMA最终以中断的形式通知CPU文件读取完成。
+>
+> 至此，文件读取完成，此时CPU就可以去内存中读取文件。
+
+
+
+### Java NIO包
+
+站在 Java 的角度，NIO 包给我们提供了一套非阻塞接口，这样就不需要我们为每一个 `C/S` 长连接保留一个单独的处理线程了。阻塞 IO 之所以需要给每一个 `socket` 长连接，指定一个线程，就是因为其阻塞。但是对于 NIO API 具备非阻塞特性，就可以使用 1 个线程去检查 n 个 `socket` 。
+
+在 Java 代码层面，NIO 包给我们提供了一个选择器 `selector` ，我们需要把检查的 `socket` 注册到这个 `selector` 中，然后主线程阻塞在 `selector` 的 `select 方法` 里，当选择器发现某个 `socket` 就绪了，就会唤醒主线程，然后就可以通过 `selector` 获取到就绪状态的 `socket` 进行相应的处理。
+
+Java NIO包的底层实现是通过系统调用实现的，对于Linux来说归根结底还是3个系统调用函数，这是学习的重点。
+
+
+
+### 系统调用函数 `select` 工作原理
+
+每次调用内核的 `select` 函数，它都会涉及到用户态/内核态的切换，还需要传递需要检查的 `socket` 集合，其实就是需要检查的 `fd` 。
+
+select 函数被调用后，首先会按照 `fd` 集合去检查内存中的 `socket` 套接字状态。
+
+这个复杂度是 `O(n)` ，然后检查完一遍之后，如果有就绪的 `socket` 那就直接返回，并且有数据的 `fd` 会在 `fd_set` 中被置位，不会阻塞当前调用线程。返回之后遍历 `fd` 集合，通过`FD_ISSET()`看一下哪个 `fd` 被 `set` 了，即被 `set` 的那个是有数据的，此时读取数据并进行相应的处理。
+
+否则就说明当前指定` fd_set` 对应的 `socket` 没有就绪状态的。那么就需要阻塞当前调用线程了，直到有某个 `socket` 有数据之后，才唤醒线程。
+
+> ** `select` 函数工作原理举例**
+>
+> 理解 `select` 模型的关键在于理解 `fd_set`（select 函数的主要参数之一，表示读文件描述符集合）。为说明方便，取 `fd_set` 长度为 1 字节，`fd_set` 中的每 `1 bit` 可以对应一个文件描述符 `fd` 。则 1 字节长的 `fd_set` 最大可以对应 8 个 `fd`。
+>    （1）执行 `fd_set set; FD_ZERO(&set);` 则 `set` 用位表示是 0000,0000。
+>    （2）若 `fd＝5` ,执行`FD_SET(fd,&set);`后 `set` 变为 0001,0000 (第 5 位置为 1 )。
+>    （3）若再加入 `fd＝2,fd=1`，则 `set` 变为 0001,0011 。
+>    （4）执行 `select(6,&set,0,0,0)` 阻塞等待。
+>    （5）若 `fd=1,fd=2` 上都发生可读事件，则 `select` 返回，此时 `set` 变为 0000,0011。注意：没有事件发生的 `fd=5` 被清空。
+
+
+
+**问题：多路复用操作系统函数 select 默认监听socket数量为什么是1024？**
+
+`select` 函数监听 `socket` 最大可以监听 1024 个 `socket` ，这是因为 `fd_set` 这个结构是 `bitmap` 位图结构，位图结构是一个长的二进制数，这个 `bitmap` 默认的长度就是 1024 个比特。想修改这个长度是很麻烦的，需要重新编译操作系统内核。
+
+另外一点，默认值给 `1024bit` 是出于性能考虑，因为 `select` 函数检查到就绪状态的 `socket` 之后做了两件事，第一件事就是给就绪状态的 `socket` 对应的 `fd_set` 中对应位置的 `fd` 设置一个标记，表示当前 `fd` 对应的 `socket` 就绪了，第二件事就是返回 `select` 函数，对应的也就是唤醒 Java 线程。站到 Java 层面，它会收到一个 `int` 结果值，表示有几个 `socket` 处于就绪状态。但是具体是哪个就绪 Java 是不知道的，因此接下来又是一个 `O(n)` 的系统调用，检查 `fd_set` 集合中的每一个 `socket` 的就绪状态，其实就是检查文件系统中指定 `socket` 的文件描述符状态，涉及到用户态/内核态的切换。如果这个时候 `bitmap` 再大，那么效率就会更低了，目前系统调用涉及到参数的数据拷贝，如果数据太庞大，它也不利于系统调用的速度。
+
+
+
+**问题：多路复用操作系统函数 select 第一遍 O(n) 未发现就绪 socket，后续在某个socket 就绪后，select 如何感知的？是不停的轮询吗？**
+
+> **知识铺垫：操作系统调度和操作系统中断的一些知识。**
+>
+> 调度：CPU同一时刻只能运行一个进程，操作系统最主要的任务就是系统调度，就是有 n 个进程，然后让这 n 个进程在 CPU 上切换执行，未挂起的进程都在工作队列内，都有机会获取 CPU 的执行权。挂起的进程就会从这个工作队列内移除出去，反应到 Java 层面就是线程阻塞了。Linux 系统线程其实就是轻量级进程。
+>
+> 操作系统中断：举例键盘打字，因为有系统中断的存在，你按下一个键之后，会给主板发一个电流信号，主板感知到以后，它就会触发 CPU 中断，所谓中断，其实就是让 CPU 正在执行的进程先保留程序上下文，然后让出 CPU ，给中断程序执行。中断程序拿到 CPU 执行权限，进行相应代码执行，比如说键盘的中断程序就会执行输出逻辑等等。
+
+`select` 函数第一遍轮询，它没有发现就绪状态的 `socket` ，他就会把当前进程保留到需要检查的 `socket` 等待队列中。
+
+对于 `socket` 结构，它有三块核心区域，分别是读缓存，写缓存，等待队列。
+
+这个 `select` 函数它把当前进程保留到每个需要检查的 `socket` 等待队列之后，就会把当前进程从工作队列中移除了，移除之后也就是挂起当前进程了，这个时候 `select` 函数也就不再运行了。
+
+假设客户端往当前服务器发送了数据，数据通过网线到网卡，网卡再通过 `DMA 硬件` 的这种方式直接将数据写到内存中，整个过程 CPU 是不参与的，当数据完成传输之后，它就会触发网络数据传输完毕的中断程序，这个中断程序就会把 CPU 当前正在执行的进程给顶掉，回去处理中断程序的逻辑。
+
+**这个中断程序的逻辑是这样的：**根据内存中已有的数据包，然后来分析出来数据包是哪个 `socket` 的数据。`TCP/IP协议` 传输的数据包是有端口号的，根据端口号就是能找到对应的 `socket实例` ，找到 `socket实例` 以后，就把数据导入到 `socket的读缓冲区` 中，导入完成以后，它就开始去检查 `socket的等待队列` ，是不是有等待者，如果有的话，就把等待者移到工作队列，中断程序到这一步就执行完了。进程又回到工作队列，又有机会获取到 CPU 时间片了。
+
+接着，当前进程执行 `select` 函数，再检查就发现有这个就绪的 `socket` 了。会给就绪的 `socket` 的 `fd` 文件描述符所在的 `fd_set` 打标记，然后 `select` 函数就执行完了，又返回 Java 层面，就涉及到内核态/用户态切换，后面的事儿就是轮询检查每一个 `socket` 的 `fd` 是否被打标记，然后处理被打了标记的 `socket` 就ok了。
+
+
+
+### 系统调用函数 poll 和 select 的主要区别是什么
+
+他们两个最大的区别就是传参不一样， `select` 使用的是 `bitmap` ，它表示需要检查的 `socket` 集合，`poll` 使用的是 `pollfd` 数组结构，表示需要检查的 `fd` 集合，主要就是为了解决 `select bitmap` 长度是 1024 的这个问题，`poll`使用数组就没这个限制了，它就可以让线程监听超过 1024 个 `socket` 限制，主要就是这个。
+
+此外 `pollfd` 这个结构体定义如下
+
+```c
+struct pollfd {
+      int fd;
+      short events; 
+      short revents;
+};
 ```
 
-## Nulla
+在初始化 `pollfds` 数组时，是将 `events` 设置为我们所感兴趣的事件，当 `poll` 遍历发现发生了对应的 `events` 时，会将 `revent` 置位，最后遍历的时候可以通过 `revents` 字段判断具体是哪个 `socket` 发生了对应的事件，同时可以在遍历到时，将 `revents` 字段置位0，就不需要像 `select` 一样每一轮循环重新构建 `fd_set` 。
 
-Nulla facilisi. Maecenas sodales nec purus eget posuere. Sed sapien quam, pretium a risus in, porttitor dapibus erat. Sed sit amet fringilla ipsum, eget iaculis augue. Integer sollicitudin tortor quis ultricies aliquam. Suspendisse fringilla nunc in tellus cursus, at placerat tellus scelerisque. Sed tempus elit a sollicitudin rhoncus. Nulla facilisi. Morbi nec dolor dolor. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Cras et aliquet lectus. Pellentesque sit amet eros nisi. Quisque ac sapien in sapien congue accumsan. Nullam in posuere ante. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Proin lacinia leo a nibh fringilla pharetra.
 
-## Orci
 
-Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Proin venenatis lectus dui, vel ultrices ante bibendum hendrerit. Aenean egestas feugiat dui id hendrerit. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Curabitur in tellus laoreet, eleifend nunc id, viverra leo. Proin vulputate non dolor vel vulputate. Curabitur pretium lobortis felis, sit amet finibus lorem suscipit ut. Sed non mollis risus. Duis sagittis, mi in euismod tincidunt, nunc mauris vestibulum urna, at euismod est elit quis erat. Phasellus accumsan vitae neque eu placerat. In elementum arcu nec tellus imperdiet, eget maximus nulla sodales. Curabitur eu sapien eget nisl sodales fermentum.
+### 系统调用函数 `epoll`工作原理
 
-## Phasellus
 
-Phasellus pulvinar ex id commodo imperdiet. Praesent odio nibh, sollicitudin sit amet faucibus id, placerat at metus. Donec vitae eros vitae tortor hendrerit finibus. Interdum et malesuada fames ac ante ipsum primis in faucibus. Quisque vitae purus dolor. Duis suscipit ac nulla et finibus. Phasellus ac sem sed dui dictum gravida. Phasellus eleifend vestibulum facilisis. Integer pharetra nec enim vitae mattis. Duis auctor, lectus quis condimentum bibendum, nunc dolor aliquam massa, id bibendum orci velit quis magna. Ut volutpat nulla nunc, sed interdum magna condimentum non. Sed urna metus, scelerisque vitae consectetur a, feugiat quis magna. Donec dignissim ornare nisl, eget tempor risus malesuada quis.
+
+#### 背景
+
+`epoll` 主要是为了解决 `select` 和 `epoll` 函数的缺陷。
+
+`select` 和 `poll` 的共同缺陷。
+
+第一个缺陷是 `select` 和 `poll` 函数，每次调用都需要我们提供给它所有的需要监听的 `socket` 文件描述符集合。而且咱们的程序的主线程是死循环调用 `select/poll` 函数，这里面涉及到内核空间拷贝的过程。
+
+第二个缺陷是 `select` 和 `poll` 函数它的返回值是一个 `int` 值，只能代表有几个 `socket` 就绪或者是有错误了，没办法表示出具体是哪个 `socket` 就绪，就导致程序被唤醒之后，还需要新的一轮系统调用去检查哪个 `socket` 是就绪状态。然后再进行 `socket` 数据处理逻辑，在这已经走了不少弯路。此外系统调用需要设计到内核态和用户态的来回切换，这个缺陷就更严重了。
+
+
+
+#### `epoll` 函数工作原理
+
+`epoll` 函数的设计就是为了解决上述的两个问题。
+
+- 第一个问题是函数调用参数拷贝的问题
+- 第二个问题是系统调用返回后不知道哪些 `socket` 就绪的问题
+
+解决这两个问题需要 `epoll` 函数在内核空间内使用特定的数据结构去存储一些数据。这个数据结构就是一个 `eventpoll` 对象，它是可以通过一个系统函数 `epoll_create()` 去创建，创建完成之后，系统函数返回一个 `event_poll `对象的 `id`（其实是 `epfd` 文件号）相当于我们在内核开辟了一小块空间，并且我们也知道这块空间的位置。
+
+说一下 `event_poll` 的结构，主要是两块重要区域：
+
+- 一块存放需要监听的 `socket_fd` 描述符列表，所使用的数据结构：红黑树，此处存的是红黑树根节点。
+
+- 另一块区域就是就绪列表，存在就绪状态的 `socket` 信息，所使用的是双链表，此处存的是链表的头部。
+
+另外提供了两个函数，一个是 `epoll_ctl` 函数，另一个是 `epoll_wait` 函数。
+
+`epoll_ctl` 可以根据 `eventpoll_id` 去增删改查内核空间上的 `eventpoll` 对象的检查列表，即关注的 `socket` 信息。去增加或者修改需要检查的 `socket` 文件描述符。
+
+`epoll_wait` 主要参数是 `eventpoll_id` 表示此次系统调用需要监听的 `socket_fd` 集合，是 `eventpoll` 中已经指定好的哪些 `socket` 信息。`epoll_wait` 函数默认情况下会阻塞调用线程，直到 `eventpoll` 中关联的某个或某些 `socket` 就绪或超时，`epoll_wait `它才会返回。
+
+**代码举例：**
+
+```c
+struct epoll_event events[5];
+  int epfd = epoll_create(10);
+  ...
+  ...
+  for (i=0;i<5;i++) 
+  {
+    static struct epoll_event ev;
+    memset(&client, 0, sizeof (client));
+    addrlen = sizeof(client);
+    ev.data.fd = accept(sockfd,(struct sockaddr*)&client, &addrlen);
+    ev.events = EPOLLIN;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, ev.data.fd, &ev); 
+  }
+  
+  while(1){
+  	puts("round again");
+  	nfds = epoll_wait(epfd, events, 5, 10000);
+	
+	for(i=0;i<nfds;i++) {
+			memset(buffer,0,MAXBUF);
+			read(events[i].data.fd, buffer, MAXBUF);
+			puts(buffer);
+	}
+  }
+```
+
+备注：上述所表述的 `eventpoll_id` 即代码中的变量 `epfd` 。
+
+代码 **第11行** 设置 `ev.events` 可选参数有 `EPOLLLT` 与 `EPOLLET`
+
+- `EPOLLLT`：将 `EPOLL` 设为于水平触发（`Level Triggered`）模式。
+- `EPOLLET`：将 `EPOLL` 设为边缘触发（`Edge Triggered`）模式。
+
+### **LT水平触发模式**
+
+在这种模式中，内核告诉你 **一个文件描述符是否就绪了** ，然后你可以对这个就绪的 `fd` 进行 `IO操作` 。如果你不做任何操作，内核还是会继续通知你的，所以这种模式编程出错误可能性要小一点。传统的 `select/poll` 都是这种模型的代表。
+
+默认采用 `LT模式` ，`LT` 支持阻塞和非阻塞套 `LT模式` 更加安全。
+
+**`LT模式` 的缺点：**
+
+ `LT` 对于 `read` 操作比较简单，有 `read` 事件就读，读多读少都没有问题，但是 `write` 就不那么容易了，一般来说 `socket` 在空闲状态时发送缓冲区一定是不满的，假如 `fd` 一直在监控中，那么会一直通知写事件，不胜其烦。所以必须保证没有数据要发送的时候，要把 `fd` 的写事件监控从 `epoll` 列表中删除，需要的时候再加入回去，如此反复。
+
+### **ET边缘触发模式**
+
+在这种模式下 **当描述符从未就绪变为就绪时** ，内核通过 `epoll` 告诉你。然后它会假设你知道文件描述符已经就绪，并且不会再为那个文件描述符发送更多的就绪通知。
+
+**`ET` 是高速工作方式,只支持非阻塞套接字。**
+
+当使用 `epoll` 的 `ET模型` （ `epoll` 的非默认工作方式）来工作时，当产生了一个 `EPOLLIN` 事件后，读数据的时候需要考虑的是当 `recv()` 返回的大小如果等于要求的大小，即 `sizeof(buf)` ，那么很有可能是缓冲区还有数据未读完，也意味着该次事件还没有处理完，所以还需要再次读取。
+** `ET`模式的缺陷：**
+如果某个 `socket` 源源不断地收到非常多的数据，在试图读取完所有数据的过程中，可能会造成其他的 `socket` 得不到处理，从而造成饥饿问题。
+
+**解决办法：**
+
+为每个已经准备好的描述符维护一个队列，这样程序就可以知道哪些描述符已经准备好了但是并没有被读取完，然后程序定时或定量的读取，如果读完则移除，直到队列为空，这样就保证了每个fd都被读到并且不会丢失数据。
+
+
+
+#### `eventpoll` 对象的就绪列表数据是如何维护的
+
+> **`socket` 知识补充**
+>
+> `socket` 对象它有三块区域，读缓冲区、写缓冲区、等待队列。
+>
+> `select` 函数调用时会把当前调用进程从工作队列里面拿出来，然后把进程引用追加到当前进程关注的每一个 `socket` 对象的等待队列中，然后当 `socket`连接的客户端发送完数据之后，数据还是通过硬件 DMA 的方式把数据写入到内存，然后相应的硬件就会向 CPU 发送中断信号，CPU 就会让当前的进程让出位置，去执行网络数据就绪的中断程序，这个中断程序，会把内存中的网络数据写入到对应的 `socket` 的读缓冲区里，把这个 `socket` 等待队列中的进程全部移动到工作队列内，再然后 `select` 函数返回了。
+
+**以上是select函数调用流程， `epoll` 与 `select` 函数调用流程非常相似**
+
+当我们调用系统函数 `epoll_ctl` 时，比如我们新添加一个需要关注的 `socket` ，内核程序会把当前 `eventpoll` 对象追加到 `socket` 等待队列中，当 `socket` 对应的客户端发送完数据，数据还是通过网线进入到服务器，还是 DMA 硬件把数据直接写入到内存，还是触发中断程序， CPU 将当前进程让出位置，去执行中断程序，中断程序还是将网络数据转移到对应的 `socket` 读缓冲区里，然后再去检查这个  `socket` 的等待队列，然后它发现这个 `socket` 等待队列内等待的不是进程，而是一个 `eventpoll` 对象引用，这时根据 `eventpoll`  引用，将当前 `socket` 的引用追加到 `event_poll` 的就绪链表末尾。
+
+还有就是 `eventpoll` 中还有一块空间是 **等待队列** ，这个等待队列保存的就是调用 `epoll_wait` 的进程，当中断程序把 `socket` 的引用追加到就绪列表之后，就继续检查 `eventpoll` 对象的等待队列，如果有进程，就会把这个进程转移到工作队列内，转移完毕后，进程又获取到了 CPU 执行时间片，然后就是调用 `epoll_wait` 函数，进程返回到 Java 层面的事儿。
+
+`epoll_wait` 的函数返回值是 `int` 类型，返回 0 表示没有就绪的 `socket` ，返回大于 0 ，表示有几个就绪的 `socket` ，-1 表示异常。
+
+**并没有表示出来哪个 `socket` 是就绪的，那么获取就绪的 `socket` 是怎么实现的呢？**
+
+`epoll_wait` 函数，调用的时候会传入一个 `epoll_event` 事件数组指针。`epoll_wait` 函数正常返回之前，就会把就绪的 `socket` 事件信息拷贝到这个数组指针里（指针表示的数组里）。返回到上层程序，这样就可以通过这个数组拿到就绪列表。
+
+
+
+#### `epoll_wait`函数是否可以设置成非阻塞的呢？
+
+默认 `epoll_wait` 是阻塞的，有一个参数，表示阻塞时间的长度，如果这个参数设置为 0 ，那么就表示这个 `epoll_wait` 是非阻塞调用的。即每次调用都会去检查就绪列表。
+
+
+
+#### `eventpoll` 对象中存放需要监视的 `socket` 信息是采用的什么数据结构？为什么？
+
+采用的是红黑树的数据结构，因为 `socket` 集合信息，经常会有增删改查的需求，红黑树会合适，他可以保持一种稳定的查找效率，并且时间复杂度是 `O(logn)`。
+

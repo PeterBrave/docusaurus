@@ -17,26 +17,32 @@
       "jvm1": {
         "title": "JVM1"
       },
-      "leetcode1": {
-        "title": "leetcode1"
-      },
-      "leetcode2": {
-        "title": "leetcode2"
-      },
       "mysql1": {
         "title": "MySQL1"
       },
       "redis1": {
         "title": "Redis必知必会"
       },
-      "swo1": {
-        "title": "剑指offer1"
+      "stock1": {
+        "title": "买卖一次股票"
+      },
+      "stock2": {
+        "title": "买卖多次股票"
+      },
+      "stock3": {
+        "title": "买卖股票含冷冻期"
+      },
+      "stock4": {
+        "title": "买卖股票含手续费"
       },
       "os2": {
         "title": "操作系统2"
       },
       "net1": {
         "title": "计算机网络1"
+      },
+      "listNode1": {
+        "title": "链表-两数相加I"
       }
     },
     "links": {
@@ -53,8 +59,8 @@
       "MySQL": "MySQL",
       "Redis": "Redis",
       "研发工具": "研发工具",
-      "Leetcode": "Leetcode",
-      "剑指Offer": "剑指Offer"
+      "股票系列": "股票系列",
+      "链表系列": "链表系列"
     }
   },
   "pages-strings": {

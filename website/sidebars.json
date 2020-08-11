@@ -31,7 +31,11 @@
       "stock4"
     ],
     "链表系列": [
-      "listNode1"
+      "listNode1",
+      "listNode2"
+    ],
+    "背包系列": [
+      "package1"
     ]
   }
 }

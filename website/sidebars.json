@@ -7,21 +7,9 @@
     "计算机网络": [
       "net1"
     ],
-    "JUC": [
-      "juc1"
-    ],
-    "JVM": [
-      "jvm1"
-    ],
-    "MySQL": [
-      "mysql1"
-    ],
-    "Redis": [
-      "redis1"
-    ],
-    "研发工具": [
-      "rdt1"
-    ] 
+    "微服务技术": [
+      "service-flow-limit"
+    ]
   },
   "docs-other": {
     "股票系列": [

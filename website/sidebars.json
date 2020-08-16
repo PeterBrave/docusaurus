@@ -26,10 +26,13 @@
       "listNode2"
     ],
     "背包系列": [
-      "package1"
+      "partition-equal-subset-sum"
     ],
     "打家劫舍": [
       "house-robber"
+    ],
+    "回溯法": [
+      
     ]
   }
 }

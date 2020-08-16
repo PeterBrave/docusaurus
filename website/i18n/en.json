@@ -47,7 +47,7 @@
       "service-flow-limit": {
         "title": "服务限流算法实现"
       },
-      "package1": {
+      "partition-equal-subset-sum": {
         "title": "分割等和子集"
       },
       "net1": {
